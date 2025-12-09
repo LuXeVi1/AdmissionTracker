@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admission Tracker + AI Assistant</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        body {
+            font-family: 'Sarabun', sans-serif;
+        }
+
+        /* Custom Scrollbar */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #c084fc;
+            border-radius: 4px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #a855f7;
+        }
+
+        .dashed-box {
+            background-image: url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' rx='8' ry='8' stroke='%23CBD5E1FF' stroke-width='2' stroke-dasharray='10%2c 10' stroke-dashoffset='0' stroke-linecap='square'/%3e%3c/svg%3e");
+            transition: all 0.3s ease;
+        }
+
+        .dashed-box:hover {
+            background-color: #F8FAFC;
+            border-color: #94A3B8;
+        }
+
+        .swal2-popup {
+            font-family: 'Sarabun', sans-serif;
+            border-radius: 15px;
+        }
+
+        /* --- New Typography Styles for AI Output --- */
+        .prose-custom h1,
+        .prose-custom h2,
+        .prose-custom h3 {
+            color: #4338ca;
+            /* Indigo-700 */
+            font-weight: 700;
+            margin-top: 1.2em;
+            margin-bottom: 0.5em;
+        }
+
+        .prose-custom h3 {
+            font-size: 1.1em;
+            border-left: 4px solid #facc15;
+            padding-left: 8px;
+        }
+
+        .prose-custom p {
+            margin-bottom: 1em;
+            line-height: 1.7;
+            color: #374151;
+        }
+
+        .prose-custom ul {
+            list-style-type: disc;
+            padding-left: 1.5em;
+            margin-bottom: 1em;
+        }
+
+        .prose-custom ol {
+            list-style-type: decimal;
+            padding-left: 1.5em;
+            margin-bottom: 1em;
+        }
+
+        .prose-custom li {
+            margin-bottom: 0.5em;
+        }
+
+        .prose-custom strong {
+            color: #7e22ce;
+            font-weight: 700;
+        }
+
+        /* Purple emphasis */
+        .prose-custom blockquote {
+            border-left: 4px solid #e5e7eb;
+            padding-left: 1em;
+            color: #6b7280;
+            font-style: italic;
+            margin-bottom: 1em;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100 min-h-screen p-2 md:p-6">
+
+    <!-- Navbar -->
+    <div
+        class="max-w-7xl mx-auto bg-blue-600 text-white p-4 rounded-xl shadow-lg mb-6 flex flex-col md:flex-row justify-between items-center">
+        <div class="flex items-center gap-3">
+            <div class="bg-white/20 p-2 rounded-full"><i class="fas fa-user-graduate text-2xl"></i></div>
+            <div>
+                <h1 class="text-xl md:text-2xl font-bold">Admission Tracker</h1>
+                <p class="text-blue-100 text-sm">GPAX: <span id="displayGpax"
+                        class="font-bold text-yellow-300">-.-</span></p>
+            </div>
+        </div>
+        <div class="mt-3 md:mt-0 text-right flex flex-col items-end">
+            <div class="flex items-center gap-2 bg-blue-700 px-3 py-1 rounded-lg">
+                <i class="fas fa-bullseye text-yellow-400"></i>
+                <span class="text-sm font-semibold">เป้าหมาย: <span id="headerTargetCount">5</span> มหาลัย</span>
+                <span id="uniCountBadge"
+                    class="bg-white text-blue-700 text-xs font-bold px-2 py-0.5 rounded-full ml-1">0/5</span>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="openSettings()"
+                    class="text-xs text-blue-200 mt-1 hover:text-white underline opacity-70 hover:opacity-100 flex items-center gap-1">
+                    <i class="fas fa-cog"></i> ตั้งค่าระบบ
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6 items-start h-full">
+
+        <!-- ================= LEFT COLUMN: AI ASSISTANT ================= -->
+        <div
+            class="bg-white rounded-xl shadow-md border border-purple-100 overflow-hidden flex flex-col h-full lg:sticky lg:top-4">
+            <div
+                class="bg-gradient-to-r from-purple-100 to-indigo-50 p-4 border-b border-purple-200 flex items-center gap-2">
+                <i class="fas fa-robot text-purple-600 text-xl"></i>
+                <div>
+                    <h2 class="font-bold text-purple-800">AI Assistant (Version 2.0)</h2>
+                    <p class="text-xs text-purple-600">วิเคราะห์เชิงลึก & จิตวิทยา</p>
+                </div>
+            </div>
+
+            <div class="p-4 space-y-6 flex-grow overflow-y-auto custom-scrollbar"
+                style="max-height: calc(100vh - 150px);">
+
+                <!-- Feature 1: Question Generator -->
+                <div class="bg-purple-50 p-4 rounded-lg border border-purple-100 shadow-sm">
+                    <h3 class="font-bold text-gray-700 mb-2 text-sm flex items-center">
+                        <i class="fas fa-comment-dots text-purple-500 mr-2"></i>1. สถานการณ์ตอนนี้คือ?
+                    </h3>
+
+                    <textarea id="situationInput" rows="2"
+                        class="w-full p-3 border border-purple-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 shadow-sm"
+                        placeholder="เช่น น้องเอาแต่เล่นเกม บอกว่าทำเสร็จแล้วแต่ไม่ให้ดู..."></textarea>
+
+                    <!-- Quick Chips -->
+                    <div class="flex flex-wrap gap-2 mt-2 mb-3">
+                        <button onclick="setSituation('น้องกำลังเล่นเกม ไม่สนใจทำพอร์ต')"
+                            class="text-xs bg-white border border-purple-200 text-purple-600 px-2 py-1 rounded-full hover:bg-purple-100 transition shadow-sm">🎮
+                            ติดเกม</button>
+                        <button onclick="setSituation('น้องอ้างว่ามหาลัยเลื่อนกำหนดส่ง')"
+                            class="text-xs bg-white border border-purple-200 text-purple-600 px-2 py-1 rounded-full hover:bg-purple-100 transition shadow-sm">📅
+                            อ้างเลื่อนส่ง</button>
+                        <button onclick="setSituation('น้องเงียบ ถามแล้วไม่ตอบ')"
+                            class="text-xs bg-white border border-purple-200 text-purple-600 px-2 py-1 rounded-full hover:bg-purple-100 transition shadow-sm">🤐
+                            ถามไม่ตอบ</button>
+                        <button onclick="setSituation('น้องบอกว่าทำเสร็จแล้วแต่ไม่ให้ดู')"
+                            class="text-xs bg-white border border-purple-200 text-purple-600 px-2 py-1 rounded-full hover:bg-purple-100 transition shadow-sm">🔒
+                            ไม่ให้ดูงาน</button>
+                    </div>
+
+                    <button onclick="generateQuestion()"
+                        class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2.5 px-4 rounded-lg transition text-sm flex justify-center items-center shadow-md">
+                        <i class="fas fa-wand-magic-sparkles mr-2"></i> ขอคำแนะนำแบบละเอียด
+                    </button>
+                </div>
+
+                <!-- Feature 2: Excuse Buster -->
+                <div class="bg-indigo-50 p-4 rounded-lg border border-indigo-100 shadow-sm">
+                    <h3 class="font-bold text-gray-700 mb-2 text-sm flex items-center">
+                        <i class="fas fa-search-plus text-indigo-500 mr-2"></i>2. น้องพูดแบบนี้จริงไหม? (จับเท็จ)
+                    </h3>
+                    <textarea id="siblingQuote" rows="2"
+                        class="w-full p-3 border border-indigo-200 rounded-lg bg-white text-sm mb-3 focus:outline-none focus:ring-2 focus:ring-indigo-400 shadow-sm"
+                        placeholder="พิมพ์สิ่งที่น้องพูดมา... เช่น 'เว็บล่ม สมัครไม่ได้เลย'"></textarea>
+                    <button onclick="analyzeQuote()"
+                        class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-4 rounded-lg transition text-sm flex justify-center items-center shadow-md">
+                        <i class="fas fa-microscope mr-2"></i> วิเคราะห์เจาะลึก
+                    </button>
+                </div>
+
+                <!-- AI Output Area -->
+                <div id="aiResultContainer" class="hidden animate-fade-in-up">
+                    <div class="bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden">
+                        <div
+                            class="bg-gray-100 px-4 py-3 flex justify-between items-center border-b text-sm font-bold text-gray-700">
+                            <span><i class="fas fa-lightbulb text-yellow-500 mr-2"></i>คำแนะนำจาก AI</span>
+                            <button onclick="closeResult()" class="text-gray-400 hover:text-red-500 transition"><i
+                                    class="fas fa-times fa-lg"></i></button>
+                        </div>
+                        <div id="aiOutputContent" class="p-5 prose-custom text-sm"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- ================= RIGHT COLUMN: UNIVERSITY DATA ================= -->
+        <div class="space-y-4">
+            <div class="flex justify-between items-end">
+                <h2 class="text-xl font-bold text-gray-800"><i
+                        class="fas fa-list-ul mr-2 text-blue-600"></i>รายชื่อมหาวิทยาลัย</h2>
+            </div>
+            <div id="universityList" class="space-y-4">
+                <!-- Javascript will populate this -->
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex justify-center items-center">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden animate-fade-in-up">
+            <div class="bg-gray-100 px-4 py-3 border-b flex justify-between items-center">
+                <h3 class="font-bold text-gray-700"><i class="fas fa-cog text-gray-500 mr-2"></i>ตั้งค่าระบบ</h3>
+                <button onclick="closeSettings()" class="text-gray-400 hover:text-red-500"><i
+                        class="fas fa-times"></i></button>
+            </div>
+            <div class="p-6 space-y-6">
+
+                <!-- API Key Section -->
+                <!-- General Settings Section -->
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">ข้อมูลส่วนตัว & API</label>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="text-xs text-gray-500">GPAX (เกรดเฉลี่ย)</label>
+                            <input type="number" step="0.01" id="gpaxInput" placeholder="0.00"
+                                class="w-full p-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-500">เป้าหมายกี่มหาลัย?</label>
+                            <input type="number" id="targetCountInput" value="5" min="1" max="20"
+                                class="w-full p-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-500">Gemini API Key</label>
+                            <input type="password" id="apiKeyInput" placeholder="วาง API Key ที่นี่..."
+                                class="w-full p-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                        </div>
+                        <button onclick="saveSettings()"
+                            class="w-full bg-blue-600 text-white px-3 py-2 rounded text-sm hover:bg-blue-700 font-bold">บันทึกการตั้งค่า</button>
+                    </div>
+                </div>
+
+                <hr>
+
+                <!-- Data Management Section -->
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">จัดการข้อมูล (Backup/Restore)</label>
+                    <div class="flex gap-2">
+                        <button onclick="exportData()"
+                            class="flex-1 bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 px-4 py-2 rounded text-sm font-semibold">
+                            <i class="fas fa-download mr-1"></i> เก็บข้อมูล (Export)
+                        </button>
+                        <button onclick="document.getElementById('importFile').click()"
+                            class="flex-1 bg-orange-50 text-orange-700 border border-orange-200 hover:bg-orange-100 px-4 py-2 rounded text-sm font-semibold">
+                            <i class="fas fa-upload mr-1"></i> กู้คืน (Import)
+                        </button>
+                        <input type="file" id="importFile" class="hidden" accept=".json" onchange="importData(this)">
+                    </div>
+                </div>
+
+                <hr>
+
+                <!-- Reset Section -->
+                <div>
+                    <button onclick="resetData()"
+                        class="w-full text-red-500 text-sm hover:bg-red-50 p-2 rounded transition">
+                        ล้างข้อมูลทั้งหมด (Reset Factory)
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Javascript Logic -->
+    <script>
+        // --- DATA MANAGEMENT (Same as before) ---
+        const defaultUniversities = [
+            { id: 1, name: "มหาวิทยาลัยตัวอย่าง", faculty: "คณะตัวอย่าง", targetDate: "2025-12-31", officialDate: "2026-01-01", status: "Not Started" }
+        ];
+
+        let universities = [];
+        let geminiApiKey = "";
+        let userGpax = "-.-";
+        let targetUniCount = 5;
+
+        function init() {
+            // Load Data
+            const savedData = localStorage.getItem('admission_tracker_data');
+            if (savedData) {
+                universities = JSON.parse(savedData);
+            } else {
+                universities = [...defaultUniversities];
+            }
+
+            // Load API Key
+            geminiApiKey = localStorage.getItem('gemini_api_key') || "";
+            if (geminiApiKey) {
+                document.getElementById('apiKeyInput').value = geminiApiKey;
+            }
+
+            // Load GPAX
+            userGpax = localStorage.getItem('admission_tracker_gpax') || "-.-";
+            document.getElementById('displayGpax').innerText = userGpax;
+            document.getElementById('gpaxInput').value = userGpax === "-.-" ? "" : userGpax;
+
+            // Load Target Count
+            const savedTarget = localStorage.getItem('admission_target_count');
+            targetUniCount = savedTarget ? parseInt(savedTarget) : 5;
+            document.getElementById('targetCountInput').value = targetUniCount;
+
+            renderUniversities();
+        }
+
+        function saveToLocal() {
+            localStorage.setItem('admission_tracker_data', JSON.stringify(universities));
+            renderUniversities();
+        }
+
+        // --- SETTINGS & DATA MANAGEMENT ---
+        function openSettings() { document.getElementById('settingsModal').classList.remove('hidden'); }
+        function closeSettings() { document.getElementById('settingsModal').classList.add('hidden'); }
+
+        function saveSettings() {
+            // Save API Key
+            const key = document.getElementById('apiKeyInput').value.trim();
+            localStorage.setItem('gemini_api_key', key);
+            geminiApiKey = key;
+
+            // Save GPAX
+            const gpax = document.getElementById('gpaxInput').value.trim();
+            userGpax = gpax || "-.-";
+            localStorage.setItem('admission_tracker_gpax', userGpax);
+            document.getElementById('displayGpax').innerText = userGpax;
+
+            // Save Target Count
+            const targetVal = document.getElementById('targetCountInput').value;
+            targetUniCount = targetVal ? parseInt(targetVal) : 5;
+            localStorage.setItem('admission_target_count', targetUniCount);
+            renderUniversities();
+
+            Swal.fire('Success', 'บันทึกการตั้งค่าเรียบร้อย!', 'success');
+        }
+
+        function exportData() {
+            // Bundle data + API Key + GPAX + Target
+            const exportObj = {
+                universities: universities,
+                apiKey: geminiApiKey || "",
+                gpax: userGpax,
+                targetCount: targetUniCount
+            };
+
+            const dataStr = JSON.stringify(exportObj, null, 2);
+            const blob = new Blob([dataStr], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `admission_backup_${new Date().toISOString().slice(0, 10)}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            Swal.fire('Downloaded', 'ดาวน์โหลดไฟล์ Backup (รวมการตั้งค่าทั้งหมด) เรียบร้อย', 'success');
+        }
+
+        function importData(input) {
+            const file = input.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+
+                    // Support old format (array only) and new format (object with apiKey)
+                    if (Array.isArray(data)) {
+                        // Old format: just universities
+                        universities = data;
+                        saveToLocal();
+                        Swal.fire('Success', 'กู้คืนข้อมูลมหาวิทยาลัยเรียบร้อย (ไม่พบ API Key ในไฟล์)', 'success');
+                    } else if (data.universities && Array.isArray(data.universities)) {
+                        // New format: universities + apiKey + gpax + targetCount
+                        universities = data.universities;
+                        saveToLocal();
+
+                        // Restore API Key
+                        if (data.apiKey) {
+                            localStorage.setItem('gemini_api_key', data.apiKey);
+                            geminiApiKey = data.apiKey;
+                            document.getElementById('apiKeyInput').value = geminiApiKey;
+                        }
+
+                        // Restore GPAX
+                        if (data.gpax) {
+                            localStorage.setItem('admission_tracker_gpax', data.gpax);
+                            userGpax = data.gpax;
+                            document.getElementById('displayGpax').innerText = userGpax;
+                            document.getElementById('gpaxInput').value = userGpax === "-.-" ? "" : userGpax;
+                        }
+
+                        // Restore Target Count
+                        if (data.targetCount) {
+                            localStorage.setItem('admission_target_count', data.targetCount);
+                            targetUniCount = data.targetCount;
+                            document.getElementById('targetCountInput').value = targetUniCount;
+                        }
+
+                        Swal.fire('Success', 'กู้คืนข้อมูลครบถ้วน!', 'success');
+                    } else {
+                        throw new Error('Invalid format');
+                    }
+                    closeSettings();
+                } catch (err) {
+                    console.error(err);
+                    Swal.fire('Error', 'ไฟล์ไม่ถูกต้อง', 'error');
+                }
+            };
+            reader.readAsText(file);
+            input.value = ''; // Reset input
+        }
+
+        function resetData() {
+            Swal.fire({
+                title: 'ล้างข้อมูล?',
+                text: "ข้อมูลทั้งหมดจะหายไปและกู้คืนไม่ได้!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                confirmButtonText: 'ใช่, ล้างข้อมูล'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    localStorage.removeItem('admission_tracker_data');
+                    localStorage.removeItem('gemini_api_key');
+                    location.reload();
+                }
+            })
+        }
+
+        function getDaysLeft(dateStr) {
+            if (!dateStr) return null;
+            const target = new Date(dateStr);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            target.setHours(0, 0, 0, 0);
+            return Math.ceil((target - today) / (1000 * 60 * 60 * 24));
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return "-";
+            return new Date(dateStr).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' });
+        }
+
+        function renderUniversities() {
+            const list = document.getElementById('universityList');
+            const countBadge = document.getElementById('uniCountBadge');
+            list.innerHTML = '';
+
+            const filledCount = universities.length;
+            document.getElementById('headerTargetCount').innerText = targetUniCount;
+            countBadge.innerText = `${filledCount}/${targetUniCount}`;
+            countBadge.className = filledCount >= targetUniCount ? "bg-green-500 text-white text-xs font-bold px-2 py-0.5 rounded-full ml-1" : "bg-white text-blue-700 text-xs font-bold px-2 py-0.5 rounded-full ml-1";
+
+            universities.forEach((uni, index) => {
+                const daysLeft = getDaysLeft(uni.targetDate);
+                let daysText = "", daysClass = "";
+
+                if (daysLeft === null) { daysText = "ไม่ระบุวัน"; daysClass = "text-gray-400"; }
+                else if (daysLeft < 0) { daysText = `เลยมาแล้ว ${Math.abs(daysLeft)} วัน`; daysClass = "text-red-600 font-bold"; }
+                else if (daysLeft === 0) { daysText = "ส่งวันนี้!"; daysClass = "text-red-600 font-bold animate-pulse"; }
+                else { daysText = `เหลืออีก ${daysLeft} วัน`; daysClass = daysLeft <= 5 ? "text-red-500 font-bold" : "text-green-600 font-bold"; }
+
+                const isStarted = uni.status === "In Progress" || uni.status === "Done";
+                const borderClass = isStarted ? "border-l-4 border-yellow-400" : "border border-gray-200 opacity-90";
+
+                const html = `
+                <div class="bg-white p-4 rounded-xl shadow-sm ${borderClass} relative group hover:shadow-md transition">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <div class="flex items-center gap-2 min-w-0">
+                                <h3 class="font-bold text-lg text-gray-800 truncate pr-2">${index + 1}. ${uni.name}</h3>
+                                <span class="text-[10px] px-2 py-0.5 rounded-full whitespace-nowrap ${getStatusColor(uni.status)}">${uni.status}</span>
+                            </div>
+                            <p class="text-sm text-gray-600 mb-2">${uni.faculty || "ยังไม่ระบุคณะ"}</p>
+                            
+                            <!-- Financial & Notes -->
+                            <div class="flex flex-wrap gap-2 text-[10px] mt-2 border-t pt-2 border-gray-100">
+                                ${uni.appFee ? `<span class="bg-blue-50 text-blue-700 px-2 py-1 rounded border border-blue-100"><i class="fas fa-tag mr-1"></i>ค่าสมัคร: ${parseInt(uni.appFee).toLocaleString()}</span>` : ''}
+                                ${uni.tuitionFee ? `<span class="bg-orange-50 text-orange-700 px-2 py-1 rounded border border-orange-100"><i class="fas fa-university mr-1"></i>ค่าเทอม: ${parseInt(uni.tuitionFee).toLocaleString()}</span>` : ''}
+                            </div>
+                            ${uni.remark ? `<p class="text-xs text-gray-400 italic mt-1 bg-gray-50 p-1.5 rounded border border-gray-100"><i class="fas fa-sticky-note mr-1"></i>${uni.remark}</p>` : ''}
+                        </div>
+                        <button onclick="openEditModal(${index})" class="text-gray-400 hover:text-blue-600 transition p-1"><i class="fas fa-edit"></i></button>
+                    </div>
+                    <div class="flex gap-4 mt-2">
+                        <div class="flex-1 bg-blue-50 p-2 rounded border border-blue-100 text-center cursor-pointer" onclick="openEditModal(${index})">
+                            <p class="text-[10px] uppercase text-gray-500">เป้าหมายน้อง</p>
+                            <p class="text-lg font-bold text-blue-700">${formatDate(uni.targetDate)}</p>
+                            <p class="text-[10px] ${daysClass}">${daysText}</p>
+                        </div>
+                        <div class="flex-1 bg-gray-50 p-2 rounded border border-gray-100 text-center opacity-80 cursor-pointer" onclick="openEditModal(${index})">
+                            <p class="text-[10px] uppercase text-gray-500">Official Deadline</p>
+                            <p class="text-base font-semibold text-gray-600">${formatDate(uni.officialDate)}</p>
+                        </div>
+                    </div>
+                </div>`;
+                list.insertAdjacentHTML('beforeend', html);
+            });
+
+            for (let i = universities.length; i < targetUniCount; i++) {
+                const html = `
+                <div onclick="openAddModal()" class="dashed-box p-4 rounded-xl flex flex-col items-center justify-center text-center h-32 cursor-pointer group">
+                    <div class="bg-white p-3 rounded-full shadow-sm mb-2 group-hover:scale-110 transition group-hover:bg-blue-50"><i class="fas fa-plus text-gray-400 text-xl group-hover:text-blue-500"></i></div>
+                    <h4 class="text-gray-500 font-bold text-sm group-hover:text-blue-600">เพิ่มมหาลัยลำดับที่ ${i + 1}</h4>
+                    <p class="text-xs text-red-400">ยังว่าง! (ต้องหาแผนสำรอง)</p>
+                </div>`;
+                list.insertAdjacentHTML('beforeend', html);
+            }
+        }
+
+        function getStatusColor(status) {
+            if (status === 'In Progress') return 'bg-yellow-100 text-yellow-800 border border-yellow-200';
+            if (status === 'Done') return 'bg-green-100 text-green-800 border border-green-200';
+            return 'bg-gray-200 text-gray-600';
+        }
+
+        async function openEditModal(index) {
+            const uni = universities[index];
+            const { value: formValues } = await Swal.fire({
+                title: 'แก้ไขข้อมูลมหาลัย',
+                html: `
+                    <div class="text-left space-y-3">
+                        <div><label class="block text-xs font-bold text-gray-500">ชื่อมหาวิทยาลัย</label><input id="swal-name" class="w-full p-2 border rounded" value="${uni.name}"></div>
+                        <div><label class="block text-xs font-bold text-gray-500">คณะ/สาขา</label><input id="swal-faculty" class="w-full p-2 border rounded" value="${uni.faculty}"></div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div><label class="block text-xs font-bold text-gray-500">วันเป้าหมาย (Target)</label><input type="date" id="swal-target" class="w-full p-2 border rounded" value="${uni.targetDate}"></div>
+                            <div><label class="block text-xs font-bold text-gray-500">Official Deadline</label><input type="date" id="swal-official" class="w-full p-2 border rounded" value="${uni.officialDate}"></div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                             <div><label class="block text-xs font-bold text-gray-500">ค่าสมัครสอบ (บาท)</label><input type="number" id="swal-appFee" class="w-full p-2 border rounded" value="${uni.appFee || ''}" placeholder="0"></div>
+                             <div><label class="block text-xs font-bold text-gray-500">ค่าเทอม (บาท)</label><input type="number" id="swal-tuitionFee" class="w-full p-2 border rounded" value="${uni.tuitionFee || ''}" placeholder="0">
+                        </div>
+                        </div>
+                        <div><label class="block text-xs font-bold text-gray-500">สถานะ</label>
+                            <select id="swal-status" class="w-full p-2 border rounded">
+                                <option value="Not Started" ${uni.status === 'Not Started' ? 'selected' : ''}>ยังไม่เริ่ม</option>
+                                <option value="In Progress" ${uni.status === 'In Progress' ? 'selected' : ''}>กำลังทำ</option>
+                                <option value="Done" ${uni.status === 'Done' ? 'selected' : ''}>เสร็จแล้ว</option>
+                            </select>
+                        </div>
+                        <div>
+                             <label class="block text-xs font-bold text-gray-500">บันทึกช่วยจำ (ข้อดี/ข้อเสีย/การเดินทาง)</label>
+                             <textarea id="swal-remark" class="w-full p-2 border rounded text-sm" rows="2" placeholder="เช่น หอพักแพงแต่ใกล้รถไฟฟ้า...">${uni.remark || ''}</textarea>
+                        </div>
+                    </div>`,
+                showCancelButton: true, confirmButtonText: 'บันทึก', confirmButtonColor: '#2563EB', cancelButtonText: 'ลบมหาลัยนี้', cancelButtonColor: '#EF4444', focusConfirm: false,
+                preConfirm: () => ({
+                    name: document.getElementById('swal-name').value,
+                    faculty: document.getElementById('swal-faculty').value,
+                    targetDate: document.getElementById('swal-target').value,
+                    officialDate: document.getElementById('swal-official').value,
+                    status: document.getElementById('swal-status').value,
+                    appFee: document.getElementById('swal-appFee').value,
+                    tuitionFee: document.getElementById('swal-tuitionFee').value,
+                    remark: document.getElementById('swal-remark').value
+                })
+            });
+
+            if (formValues) { universities[index] = { ...universities[index], ...formValues }; saveToLocal(); }
+            else if (Swal.getDismissReason() === Swal.DismissReason.cancel) { if (confirm('ยืนยันลบมหาลัยนี้?')) { universities.splice(index, 1); saveToLocal(); } }
+        }
+
+        async function openAddModal() {
+            const { value: formValues } = await Swal.fire({
+                title: 'เพิ่มมหาลัยใหม่',
+                html: `
+                    <div class="text-left space-y-3">
+                        <div><label class="block text-xs font-bold text-gray-500">ชื่อมหาวิทยาลัย</label><input id="swal-name" class="w-full p-2 border rounded" placeholder="เช่น ม.เกษตร"></div>
+                        <div><label class="block text-xs font-bold text-gray-500">คณะ/สาขา</label><input id="swal-faculty" class="w-full p-2 border rounded" placeholder="เช่น วิศวกรรมศาสตร์"></div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div><label class="block text-xs font-bold text-gray-500">วันเป้าหมาย</label><input type="date" id="swal-target" class="w-full p-2 border rounded"></div>
+                            <div><label class="block text-xs font-bold text-gray-500">Official Deadline</label><input type="date" id="swal-official" class="w-full p-2 border rounded"></div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                             <div><label class="block text-xs font-bold text-gray-500">ค่าสมัครสอบ (บาท)</label><input type="number" id="swal-appFee" class="w-full p-2 border rounded" placeholder="0"></div>
+                             <div><label class="block text-xs font-bold text-gray-500">ค่าเทอม (บาท)</label><input type="number" id="swal-tuitionFee" class="w-full p-2 border rounded" placeholder="0">
+                        </div>
+                        </div>
+                        <div><label class="block text-xs font-bold text-gray-500">สถานะ</label>
+                            <select id="swal-status" class="w-full p-2 border rounded">
+                                <option value="Not Started">ยังไม่เริ่ม</option>
+                                <option value="In Progress">กำลังทำ</option>
+                            </select>
+                        </div>
+                        <div>
+                             <label class="block text-xs font-bold text-gray-500">บันทึกช่วยจำ (ข้อดี/ข้อเสีย/การเดินทาง)</label>
+                             <textarea id="swal-remark" class="w-full p-2 border rounded text-sm" rows="2" placeholder="เช่น หอพักแพงแต่ใกล้รถไฟฟ้า..."></textarea>
+                        </div>
+                    </div>`,
+                showCancelButton: true, confirmButtonText: 'เพิ่ม', confirmButtonColor: '#2563EB', cancelButtonText: 'ยกเลิก', focusConfirm: false,
+                preConfirm: () => ({
+                    name: document.getElementById('swal-name').value,
+                    faculty: document.getElementById('swal-faculty').value,
+                    targetDate: document.getElementById('swal-target').value,
+                    officialDate: document.getElementById('swal-official').value,
+                    status: document.getElementById('swal-status').value,
+                    appFee: document.getElementById('swal-appFee').value,
+                    tuitionFee: document.getElementById('swal-tuitionFee').value,
+                    remark: document.getElementById('swal-remark').value
+                })
+            });
+            if (formValues) { universities.push({ id: Date.now(), ...formValues }); saveToLocal(); }
+        }
+
+        // --- AI LOGIC (Enhanced Prompts) ---
+        function setSituation(text) { document.getElementById('situationInput').value = text; }
+
+        async function callGemini(prompt) {
+            if (!geminiApiKey) {
+                Swal.fire('API Key Missing', 'กรุณาตั้งค่า API Key ในเมนูตั้งค่าก่อนใช้งาน AI', 'warning');
+                return "⚠️ กรุณาใส่ API Key ก่อนใช้งาน";
+            }
+            const apiKey = geminiApiKey;
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            const payload = { contents: [{ parts: [{ text: prompt }] }] };
+            try {
+                const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                if (!response.ok) throw new Error('API Error');
+                const data = await response.json();
+                return data.candidates[0].content.parts[0].text;
+            } catch (error) { console.error(error); return "⚠️ ระบบขัดข้องชั่วคราว ลองใหม่นะครับ"; }
+        }
+
+        function showResult(html) {
+            const container = document.getElementById('aiResultContainer');
+            document.getElementById('aiOutputContent').innerHTML = html;
+            container.classList.remove('hidden');
+        }
+        function closeResult() { document.getElementById('aiResultContainer').classList.add('hidden'); }
+        function setLoading(btn) {
+            document.getElementById('aiResultContainer').classList.remove('hidden');
+            document.getElementById('aiOutputContent').innerHTML = '<div class="text-center py-8 text-purple-600"><i class="fas fa-spinner fa-spin fa-2x mb-3"></i><br>AI กำลังวิเคราะห์ข้อมูลเชิงลึก...</div>';
+            btn.disabled = true; btn.classList.add('opacity-50');
+        }
+        function clearLoading(btn) { btn.disabled = false; btn.classList.remove('opacity-50'); }
+
+        async function generateQuestion() {
+            const situation = document.getElementById('situationInput').value;
+            if (!situation.trim()) return Swal.fire('กรุณาพิมพ์สถานการณ์ก่อนครับ');
+            const btn = document.querySelector('button[onclick="generateQuestion()"]');
+            setLoading(btn);
+
+            const prompt = `
+                Role: ผู้เชี่ยวชาญด้านจิตวิทยาวัยรุ่นและการสื่อสารในครอบครัว (Family Counselor)
+                Task: ให้คำแนะนำพี่สาวในการคุยกับน้อง (ม.6, TCAS69)
+                Situation: "${situation}"
+                
+                Instruction: เขียนคำตอบที่ละเอียด ลึกซึ้ง และนำไปใช้ได้จริง โดยแบ่งหัวข้อดังนี้:
+                1. 🧠 **วิเคราะห์จิตวิทยาน้อง:** ทำไมน้องถึงทำแบบนี้? (เช่น กลัวความล้มเหลว, เหนื่อยสะสม, หรือแค่ข้ออ้าง) อธิบายให้พี่เข้าใจน้องก่อน
+                2. 🗣️ **ทางเลือกบทสนทนา (Scripts):**
+                   - 🍬 **แบบละมุน (Soft Approach):** เน้นความเข้าใจ เปิดใจ
+                   - 🔥 **แบบกระตุ้น (Nudge Approach):** ชี้ให้เห็นผลกระทบ แบบไม่ดุด่า
+                   - 🛡️ **แบบเด็ดขาด (Firm Boundary):** ถ้า 2 แบบแรกไม่ได้ผล ต้องยื่นคำขาดอย่างไร
+                3. 💡 **เคล็ดลับเพิ่มเติม:** ท่าทีการพูด ภาษาทางกาย หรือสิ่งที่ห้ามทำเด็ดขาด
+                
+                Format: HTML (ใช้ <h3>, <ul>, <li>, <strong>, <p> ให้สวยงาม อ่านง่าย)
+            `;
+            const result = await callGemini(prompt);
+            showResult(marked.parse(result));
+            clearLoading(btn);
+        }
+
+        async function analyzeQuote() {
+            const quote = document.getElementById('siblingQuote').value;
+            if (!quote.trim()) return Swal.fire('พิมพ์สิ่งที่น้องพูดก่อนครับ');
+            const btn = document.querySelector('button[onclick="analyzeQuote()"]');
+            setLoading(btn);
+
+            const prompt = `
+                Role: ผู้เชี่ยวชาญระบบ TCAS และนักจับโกหก (Fact Checker)
+                Task: วิเคราะห์คำพูดของน้อง: "${quote}"
+                
+                Instruction: ขอข้อมูลเชิงลึกและละเอียด:
+                1. 🔍 **ระดับความน่าเชื่อถือ (Verdict):** (สูง/ปานกลาง/ต่ำ) พร้อมเหตุผลประกอบ
+                2. 🧐 **บทวิเคราะห์:** ในมุมมองระบบการสอบเข้า คำพูดนี้เป็นไปได้แค่ไหน? มีโอกาสเป็นข้ออ้างสูงหรือไม่?
+                3. 🕵️ **วิธีตรวจสอบ (Investigate):** พี่ต้องขอดูหลักฐานอะไรที่ "ดิ้นไม่หลุด" (เช่น ขอแคปหน้าจอเมนูไหน, ขอลิงก์ประกาศหน้าไหน)
+                4. 🎭 **สิ่งที่น้องอาจกำลังซ่อนอยู่:** ถ้าน้องโกหก น้องน่าจะกำลังกลัวหรือกังวลเรื่องอะไร?
+                
+                Format: HTML (ใช้ <h3>, <ul>, <li>, <strong>, <p> ให้สวยงาม อ่านง่าย)
+            `;
+            const result = await callGemini(prompt);
+            showResult(marked.parse(result));
+            clearLoading(btn);
+        }
+
+        init();
+    </script>
+</body>
+
+</html>
