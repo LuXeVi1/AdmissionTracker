@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
             font-family: 'Sarabun', sans-serif;
@@ -141,7 +142,7 @@
 
         <!-- ================= LEFT COLUMN: AI ASSISTANT ================= -->
         <div
-            class="bg-white rounded-xl shadow-md border border-purple-100 overflow-hidden flex flex-col h-full lg:sticky lg:top-4">
+            class="bg-white rounded-xl shadow-md border border-purple-100 overflow-hidden flex flex-col lg:sticky lg:top-4">
             <div
                 class="bg-gradient-to-r from-purple-100 to-indigo-50 p-4 border-b border-purple-200 flex items-center gap-2">
                 <i class="fas fa-robot text-purple-600 text-xl"></i>
@@ -1520,7 +1521,17 @@
             function openBudgetPlanner() {
                 if (universities.length === 0) return Swal.fire('ยังไม่มีข้อมูล', 'กรุณาเพิ่มมหาวิทยาลัยก่อนใช้งาน Budget Planner', 'info');
 
-                let htmlContent = `<div class="space-y-4">`;
+                // Prepare Data for Stacked Chart
+                const labels = [];
+                const tuitionData = [];
+                const dormData = [];
+                const livingData = [];
+                const appData = [];
+
+                // Color mapping for list
+                const colors = ['#EF4444', '#3B82F6', '#F59E0B', '#10B981', '#8B5CF6', '#EC4899'];
+
+                let htmlDetail = `<div class="space-y-3 mt-4 h-60 overflow-y-auto custom-scrollbar p-1">`;
 
                 universities.forEach((uni, index) => {
                     const tuition = parseInt(uni.tuitionFee || 0);
@@ -1528,58 +1539,135 @@
                     const living = parseInt(uni.livingCost || 0);
                     const app = parseInt(uni.appFee || 0);
 
-                    // Calculation: 1 Year (2 Terms, 12 Months)
+                    // Calculation: 1 Year
                     const yearlyTuition = tuition * 2;
-                    const yearlyFixed = (dorm + living) * 12;
-                    const firstYearTotal = yearlyTuition + yearlyFixed + app;
+                    const yearlyDorm = dorm * 12;
+                    const yearlyLiving = living * 12;
+                    const total = yearlyTuition + yearlyDorm + yearlyLiving + app;
 
-                    htmlContent += `
-                <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                    <div class="flex justify-between items-start mb-2">
-                         <h3 class="font-bold text-blue-900 text-left truncate w-3/4"><span class="text-gray-400 mr-1">#${index + 1}</span> ${uni.name}</h3>
-                         <span class="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full font-bold whitespace-nowrap">ปีละ ≈ ${firstYearTotal.toLocaleString()} บ.</span>
-                    </div>
-                    
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs text-left">
-                        <div class="bg-white p-2 rounded border">
-                            <div class="text-gray-500">ค่าสมัคร</div>
-                            <div class="font-bold text-gray-800">${app > 0 ? app.toLocaleString() : '-'}</div>
-                        </div>
-                        <div class="bg-white p-2 rounded border">
-                            <div class="text-gray-500 text-[10px]">ค่าเทอม (X2)</div>
-                            <div class="font-bold text-gray-800">${tuition > 0 ? tuition.toLocaleString() : '-'}</div>
-                        </div>
-                        <div class="bg-white p-2 rounded border">
-                            <div class="text-gray-500 text-[10px]">หอพัก (X12)</div>
-                            <div class="font-bold text-gray-800">${dorm > 0 ? dorm.toLocaleString() : '-'}</div>
-                        </div>
-                        <div class="bg-white p-2 rounded border">
-                            <div class="text-gray-500 text-[10px]">กินอยู่ (X12)</div>
-                            <div class="font-bold text-gray-800">${living > 0 ? living.toLocaleString() : '-'}</div>
-                        </div>
-                    </div>
+                    labels.push(`M${index + 1}`);
+                    tuitionData.push(yearlyTuition);
+                    dormData.push(yearlyDorm);
+                    livingData.push(yearlyLiving);
+                    appData.push(app);
 
-                    ${(tuition + dorm + living) === 0 ? '<p class="text-[10px] text-red-400 mt-2 text-left">*ยังไม่ได้ระบุข้อมูลการเงิน (กดแก้ไขที่หน้ารายการ)</p>' : ''}
-                </div>`;
+                    htmlDetail += `
+                    <div class="bg-white p-3 rounded-lg border border-gray-200 shadow-sm flex justify-between items-center group hover:border-blue-300 transition">
+                        <div class="flex items-center gap-3 overflow-hidden">
+                             <div class="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-xs flex-shrink-0" style="background-color: ${colors[index % colors.length]}">
+                                M${index + 1}
+                             </div>
+                             <div class="min-w-0">
+                                <div class="font-bold text-gray-700 text-sm truncate">${uni.name}</div>
+                                <div class="text-[10px] text-gray-400 flex gap-2">
+                                    <span><i class="fas fa-university text-red-400"></i> ${yearlyTuition.toLocaleString()}</span>
+                                    <span><i class="fas fa-bed text-blue-400"></i> ${yearlyDorm.toLocaleString()}</span>
+                                    <span><i class="fas fa-utensils text-yellow-500"></i> ${yearlyLiving.toLocaleString()}</span>
+                                </div>
+                             </div>
+                        </div>
+                        <div class="font-bold text-blue-600 text-sm whitespace-nowrap">฿ ${total.toLocaleString()}</div>
+                    </div>`;
                 });
 
-                htmlContent += `
-                <div class="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded text-xs text-left text-yellow-800">
-                    <i class="fas fa-lightbulb mr-1"></i> <b>วิธีคำนวณ (ประมาณการ 1 ปีการศึกษา):</b><br>
-                    (ค่าเทอม x 2) + (ค่าหอพัก x 12) + (ค่ากินอยู่ x 12) + ค่าสมัคร
+                htmlDetail += `</div>`;
+
+                const htmlContent = `
+                <div class="bg-gray-50 rounded-xl p-2 mb-4 relative">
+                     <div style="height: 300px;">
+                        <canvas id="budgetChart"></canvas>
+                     </div>
                 </div>
-            </div>`;
+                ${htmlDetail}
+                <div class="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded text-xs text-left text-yellow-800">
+                    <i class="fas fa-info-circle mr-1"></i> <b>กราฟแสดงค่าใช้จ่ายแยกประเภท (ต่อปี):</b><br>
+                    <span class="inline-block w-3 h-3 bg-red-400 rounded-full mr-1"></span>ค่าเทอม
+                    <span class="inline-block w-3 h-3 bg-blue-400 rounded-full mr-1 ml-2"></span>ค่าหอ
+                    <span class="inline-block w-3 h-3 bg-yellow-400 rounded-full mr-1 ml-2"></span>ค่ากินอยู่
+                    <span class="inline-block w-3 h-3 bg-gray-400 rounded-full mr-1 ml-2"></span>ค่าสมัคร
+                </div>`;
 
                 Swal.fire({
-                    title: '<span class="text-xl">💰 สรุปงบประมาณที่ต้องเตรียม</span>',
+                    title: '<span class="text-xl font-bold text-gray-700">📊 งบประมาณ (Stacked)</span>',
                     html: htmlContent,
-                    width: '600px',
+                    width: '650px',
                     showCloseButton: true,
                     focusConfirm: false,
-                    confirmButtonText: 'รับทราบ (OK)',
-                    confirmButtonColor: '#10B981',
+                    confirmButtonText: 'ปิดหน้าต่าง',
+                    confirmButtonColor: '#6B7280',
                     customClass: {
-                        container: 'font-sarabun'
+                        container: 'font-sarabun',
+                        popup: 'rounded-2xl'
+                    },
+                    didOpen: () => {
+                        const ctx = document.getElementById('budgetChart').getContext('2d');
+                        const fullLabels = universities.map(u => u.name);
+
+                        new Chart(ctx, {
+                            type: 'bar',
+                            data: {
+                                labels: labels,
+                                datasets: [
+                                    {
+                                        label: 'ค่าเทอม (ปี)',
+                                        data: tuitionData,
+                                        backgroundColor: '#F87171', // Red 400
+                                        stack: 'Stack 0'
+                                    },
+                                    {
+                                        label: 'ค่าหอพัก (ปี)',
+                                        data: dormData,
+                                        backgroundColor: '#60A5FA', // Blue 400
+                                        stack: 'Stack 0'
+                                    },
+                                    {
+                                        label: 'ค่ากินอยู่ (ปี)',
+                                        data: livingData,
+                                        backgroundColor: '#FACC15', // Yellow 400
+                                        stack: 'Stack 0'
+                                    },
+                                    {
+                                        label: 'ค่าสมัคร',
+                                        data: appData,
+                                        backgroundColor: '#9CA3AF', // Gray 400
+                                        stack: 'Stack 0'
+                                    }
+                                ]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: {
+                                    legend: { display: false },
+                                    tooltip: {
+                                        callbacks: {
+                                            title: function (context) {
+                                                const idx = context[0].dataIndex;
+                                                return fullLabels[idx];
+                                            },
+                                            label: function (context) {
+                                                return context.dataset.label + ': ' + parseInt(context.raw).toLocaleString() + ' บ.';
+                                            },
+                                            afterBody: function (context) {
+                                                const idx = context[0].dataIndex;
+                                                const total = tuitionData[idx] + dormData[idx] + livingData[idx] + appData[idx];
+                                                return '----------------\nรวมทั้งสิ้น: ' + total.toLocaleString() + ' บ.';
+                                            }
+                                        }
+                                    }
+                                },
+                                scales: {
+                                    x: { stacked: true },
+                                    y: {
+                                        stacked: true,
+                                        ticks: {
+                                            callback: function (value) { return '฿' + (value / 1000) + 'k'; },
+                                            font: { size: 10 }
+                                        }
+                                    }
+                                }
+                            }
+                        });
                     }
                 });
             }
