@@ -124,10 +124,14 @@
                 <span id="uniCountBadge"
                     class="bg-white text-blue-700 text-xs font-bold px-2 py-0.5 rounded-full ml-1">0/5</span>
             </div>
-            <div class="flex gap-2">
+            <div class="flex gap-2 mt-2">
+                <button onclick="openBudgetPlanner()"
+                    class="bg-white/10 hover:bg-white/20 border border-white/20 text-white text-sm font-medium px-4 py-1.5 rounded-lg transition flex items-center gap-2 shadow-sm backdrop-blur-sm group">
+                    <i class="fas fa-coins text-yellow-300 group-hover:scale-110 transition"></i> งบประมาณ
+                </button>
                 <button onclick="openSettings()"
-                    class="text-xs text-blue-200 mt-1 hover:text-white underline opacity-70 hover:opacity-100 flex items-center gap-1">
-                    <i class="fas fa-cog"></i> ตั้งค่าระบบ
+                    class="bg-black/20 hover:bg-black/30 border border-transparent text-blue-100 text-sm font-medium px-4 py-1.5 rounded-lg transition flex items-center gap-2 shadow-sm">
+                    <i class="fas fa-cog group-hover:rotate-90 transition"></i> ตั้งค่า
                 </button>
             </div>
         </div>
@@ -142,7 +146,7 @@
                 class="bg-gradient-to-r from-purple-100 to-indigo-50 p-4 border-b border-purple-200 flex items-center gap-2">
                 <i class="fas fa-robot text-purple-600 text-xl"></i>
                 <div>
-                    <h2 class="font-bold text-purple-800">AI Assistant (Version 2.0)</h2>
+                    <h2 class="font-bold text-purple-800">AI Assistant</h2>
                     <p class="text-xs text-purple-600">วิเคราะห์เชิงลึก & จิตวิทยา</p>
                 </div>
             </div>
@@ -330,6 +334,7 @@
             document.getElementById('targetCountInput').value = targetUniCount;
 
             renderUniversities();
+            setTimeout(showWelcomeModal, 800);
         }
 
         function saveToLocal() {
@@ -480,6 +485,7 @@
             countBadge.className = filledCount >= targetUniCount ? "bg-green-500 text-white text-xs font-bold px-2 py-0.5 rounded-full ml-1" : "bg-white text-blue-700 text-xs font-bold px-2 py-0.5 rounded-full ml-1";
 
             universities.forEach((uni, index) => {
+                // Target Date Logic
                 const daysLeft = getDaysLeft(uni.targetDate);
                 let daysText = "", daysClass = "";
 
@@ -488,37 +494,48 @@
                 else if (daysLeft === 0) { daysText = "ส่งวันนี้!"; daysClass = "text-red-600 font-bold animate-pulse"; }
                 else { daysText = `เหลืออีก ${daysLeft} วัน`; daysClass = daysLeft <= 5 ? "text-red-500 font-bold" : "text-green-600 font-bold"; }
 
+                // Official Deadline Logic (New)
+                const offDaysLeft = getDaysLeft(uni.officialDate);
+                let offDaysText = "", offDaysClass = "";
+
+                if (offDaysLeft === null) { offDaysText = "ยังมึนๆ (ไม่ระบุ)"; offDaysClass = "text-red-300"; }
+                else if (offDaysLeft < 0) { offDaysText = `ปิดรับแล้ว (${Math.abs(offDaysLeft)} วันที่แล้ว)`; offDaysClass = "text-gray-400 font-bold"; }
+                else if (offDaysLeft === 0) { offDaysText = "วันสุดท้าย!"; offDaysClass = "text-red-700 font-extrabold animate-pulse"; }
+                else { offDaysText = `เหลืออีก ${offDaysLeft} วัน`; offDaysClass = offDaysLeft <= 7 ? "text-red-600 font-bold" : "text-red-400 font-medium"; }
+
+
                 const isStarted = uni.status === "In Progress" || uni.status === "Done";
                 const borderClass = isStarted ? "border-l-4 border-yellow-400" : "border border-gray-200 opacity-90";
 
                 const html = `
                 <div class="bg-white p-4 rounded-xl shadow-sm ${borderClass} relative group hover:shadow-md transition">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <div class="flex items-center gap-2 min-w-0">
-                                <h3 class="font-bold text-lg text-gray-800 truncate pr-2">${index + 1}. ${uni.name}</h3>
+                    <div class="flex justify-between items-start gap-4">
+                        <div class="flex-1 min-w-0">
+                            <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                <h3 class="font-bold text-lg text-gray-800 break-words line-clamp-2">${index + 1}. ${uni.name}</h3>
                                 <span class="text-[10px] px-2 py-0.5 rounded-full whitespace-nowrap ${getStatusColor(uni.status)}">${uni.status}</span>
                             </div>
-                            <p class="text-sm text-gray-600 mb-2">${uni.faculty || "ยังไม่ระบุคณะ"}</p>
+                            <p class="text-sm text-gray-600 mb-2 truncate">${uni.faculty || "ยังไม่ระบุคณะ"}</p>
                             
                             <!-- Financial & Notes -->
                             <div class="flex flex-wrap gap-2 text-[10px] mt-2 border-t pt-2 border-gray-100">
                                 ${uni.appFee ? `<span class="bg-blue-50 text-blue-700 px-2 py-1 rounded border border-blue-100"><i class="fas fa-tag mr-1"></i>ค่าสมัคร: ${parseInt(uni.appFee).toLocaleString()}</span>` : ''}
                                 ${uni.tuitionFee ? `<span class="bg-orange-50 text-orange-700 px-2 py-1 rounded border border-orange-100"><i class="fas fa-university mr-1"></i>ค่าเทอม: ${parseInt(uni.tuitionFee).toLocaleString()}</span>` : ''}
                             </div>
-                            ${uni.remark ? `<p class="text-xs text-gray-400 italic mt-1 bg-gray-50 p-1.5 rounded border border-gray-100"><i class="fas fa-sticky-note mr-1"></i>${uni.remark}</p>` : ''}
+                            ${uni.remark ? `<p class="text-xs text-gray-400 italic mt-1 bg-gray-50 p-1.5 rounded border border-gray-100 line-clamp-1"><i class="fas fa-sticky-note mr-1"></i>${uni.remark}</p>` : ''}
                         </div>
-                        <button onclick="openEditModal(${index})" class="text-gray-400 hover:text-blue-600 transition p-1"><i class="fas fa-edit"></i></button>
+                        <button onclick="openEditModal(${index})" class="flex-shrink-0 text-gray-400 hover:text-blue-600 transition p-2 bg-gray-50 rounded-lg hover:bg-blue-50"><i class="fas fa-edit"></i></button>
                     </div>
-                    <div class="flex gap-4 mt-2">
-                        <div class="flex-1 bg-blue-50 p-2 rounded border border-blue-100 text-center cursor-pointer" onclick="openEditModal(${index})">
-                            <p class="text-[10px] uppercase text-gray-500">เป้าหมายน้อง</p>
-                            <p class="text-lg font-bold text-blue-700">${formatDate(uni.targetDate)}</p>
-                            <p class="text-[10px] ${daysClass}">${daysText}</p>
+                    <div class="flex gap-3 mt-3">
+                        <div class="flex-1 bg-gradient-to-br from-blue-50 to-blue-100/50 p-2 rounded-lg border border-blue-100 text-center cursor-pointer hover:border-blue-300 transition" onclick="openEditModal(${index})">
+                            <p class="text-[10px] uppercase text-blue-500 font-bold tracking-wide">เป้าหมายน้อง</p>
+                            <p class="text-lg font-bold text-blue-700 leading-tight mt-1">${formatDate(uni.targetDate)}</p>
+                            <p class="text-[10px] mt-1 ${daysClass}">${daysText}</p>
                         </div>
-                        <div class="flex-1 bg-gray-50 p-2 rounded border border-gray-100 text-center opacity-80 cursor-pointer" onclick="openEditModal(${index})">
-                            <p class="text-[10px] uppercase text-gray-500">Official Deadline</p>
-                            <p class="text-base font-semibold text-gray-600">${formatDate(uni.officialDate)}</p>
+                        <div class="flex-1 bg-gradient-to-br from-red-50 to-red-100/50 p-2 rounded-lg border border-red-100 text-center cursor-pointer hover:border-red-300 transition group/official" onclick="openEditModal(${index})">
+                            <p class="text-[10px] uppercase text-red-500 font-bold tracking-wide group-hover/official:text-red-700">Official Deadline</p>
+                            <p class="text-lg font-bold text-red-700 leading-tight mt-1">${formatDate(uni.officialDate)}</p>
+                            <p class="text-[10px] mt-1 ${offDaysClass}">${offDaysText}</p>
                         </div>
                     </div>
                 </div>`;
@@ -530,7 +547,7 @@
                 <div onclick="openAddModal()" class="dashed-box p-4 rounded-xl flex flex-col items-center justify-center text-center h-32 cursor-pointer group">
                     <div class="bg-white p-3 rounded-full shadow-sm mb-2 group-hover:scale-110 transition group-hover:bg-blue-50"><i class="fas fa-plus text-gray-400 text-xl group-hover:text-blue-500"></i></div>
                     <h4 class="text-gray-500 font-bold text-sm group-hover:text-blue-600">เพิ่มมหาลัยลำดับที่ ${i + 1}</h4>
-                    <p class="text-xs text-red-400">ยังว่าง! (ต้องหาแผนสำรอง)</p>
+                    <p class="text-xs text-red-400 font-light">ยังว่าง! (ต้องหาแผนสำรอง)</p>
                 </div>`;
                 list.insertAdjacentHTML('beforeend', html);
             }
@@ -545,43 +562,20 @@
         async function openEditModal(index) {
             const uni = universities[index];
             const { value: formValues } = await Swal.fire({
-                title: 'แก้ไขข้อมูลมหาลัย',
-                html: `
-                    <div class="text-left space-y-3">
-                        <div><label class="block text-xs font-bold text-gray-500">ชื่อมหาวิทยาลัย</label><input id="swal-name" class="w-full p-2 border rounded" value="${uni.name}"></div>
-                        <div><label class="block text-xs font-bold text-gray-500">คณะ/สาขา</label><input id="swal-faculty" class="w-full p-2 border rounded" value="${uni.faculty}"></div>
-                        <div class="grid grid-cols-2 gap-2">
-                            <div><label class="block text-xs font-bold text-gray-500">วันเป้าหมาย (Target)</label><input type="date" id="swal-target" class="w-full p-2 border rounded" value="${uni.targetDate}"></div>
-                            <div><label class="block text-xs font-bold text-gray-500">Official Deadline</label><input type="date" id="swal-official" class="w-full p-2 border rounded" value="${uni.officialDate}"></div>
-                        </div>
-                        <div class="grid grid-cols-2 gap-2">
-                             <div><label class="block text-xs font-bold text-gray-500">ค่าสมัครสอบ (บาท)</label><input type="number" id="swal-appFee" class="w-full p-2 border rounded" value="${uni.appFee || ''}" placeholder="0"></div>
-                             <div><label class="block text-xs font-bold text-gray-500">ค่าเทอม (บาท)</label><input type="number" id="swal-tuitionFee" class="w-full p-2 border rounded" value="${uni.tuitionFee || ''}" placeholder="0">
-                        </div>
-                        </div>
-                        <div><label class="block text-xs font-bold text-gray-500">สถานะ</label>
-                            <select id="swal-status" class="w-full p-2 border rounded">
-                                <option value="Not Started" ${uni.status === 'Not Started' ? 'selected' : ''}>ยังไม่เริ่ม</option>
-                                <option value="In Progress" ${uni.status === 'In Progress' ? 'selected' : ''}>กำลังทำ</option>
-                                <option value="Done" ${uni.status === 'Done' ? 'selected' : ''}>เสร็จแล้ว</option>
-                            </select>
-                        </div>
-                        <div>
-                             <label class="block text-xs font-bold text-gray-500">บันทึกช่วยจำ (ข้อดี/ข้อเสีย/การเดินทาง)</label>
-                             <textarea id="swal-remark" class="w-full p-2 border rounded text-sm" rows="2" placeholder="เช่น หอพักแพงแต่ใกล้รถไฟฟ้า...">${uni.remark || ''}</textarea>
-                        </div>
-                    </div>`,
-                showCancelButton: true, confirmButtonText: 'บันทึก', confirmButtonColor: '#2563EB', cancelButtonText: 'ลบมหาลัยนี้', cancelButtonColor: '#EF4444', focusConfirm: false,
-                preConfirm: () => ({
-                    name: document.getElementById('swal-name').value,
-                    faculty: document.getElementById('swal-faculty').value,
-                    targetDate: document.getElementById('swal-target').value,
-                    officialDate: document.getElementById('swal-official').value,
-                    status: document.getElementById('swal-status').value,
-                    appFee: document.getElementById('swal-appFee').value,
-                    tuitionFee: document.getElementById('swal-tuitionFee').value,
-                    remark: document.getElementById('swal-remark').value
-                })
+                title: `<span class="text-2xl font-bold text-gray-700">✏️ แก้ไขข้อมูลมหาลัย</span>`,
+                html: generateModalHtml(uni),
+                width: '600px',
+                showCancelButton: true,
+                confirmButtonText: '<i class="fas fa-save mr-1"></i> บันทึก',
+                confirmButtonColor: '#2563EB',
+                cancelButtonText: '<i class="fas fa-trash-alt mr-1"></i> ลบมหาลัยนี้',
+                cancelButtonColor: '#EF4444',
+                focusConfirm: false,
+                customClass: {
+                    popup: 'rounded-2xl',
+                    container: 'font-sarabun'
+                },
+                preConfirm: () => getModalValues()
             });
 
             if (formValues) { universities[index] = { ...universities[index], ...formValues }; saveToLocal(); }
@@ -590,44 +584,128 @@
 
         async function openAddModal() {
             const { value: formValues } = await Swal.fire({
-                title: 'เพิ่มมหาลัยใหม่',
-                html: `
-                    <div class="text-left space-y-3">
-                        <div><label class="block text-xs font-bold text-gray-500">ชื่อมหาวิทยาลัย</label><input id="swal-name" class="w-full p-2 border rounded" placeholder="เช่น ม.เกษตร"></div>
-                        <div><label class="block text-xs font-bold text-gray-500">คณะ/สาขา</label><input id="swal-faculty" class="w-full p-2 border rounded" placeholder="เช่น วิศวกรรมศาสตร์"></div>
-                        <div class="grid grid-cols-2 gap-2">
-                            <div><label class="block text-xs font-bold text-gray-500">วันเป้าหมาย</label><input type="date" id="swal-target" class="w-full p-2 border rounded"></div>
-                            <div><label class="block text-xs font-bold text-gray-500">Official Deadline</label><input type="date" id="swal-official" class="w-full p-2 border rounded"></div>
-                        </div>
-                        <div class="grid grid-cols-2 gap-2">
-                             <div><label class="block text-xs font-bold text-gray-500">ค่าสมัครสอบ (บาท)</label><input type="number" id="swal-appFee" class="w-full p-2 border rounded" placeholder="0"></div>
-                             <div><label class="block text-xs font-bold text-gray-500">ค่าเทอม (บาท)</label><input type="number" id="swal-tuitionFee" class="w-full p-2 border rounded" placeholder="0">
-                        </div>
-                        </div>
-                        <div><label class="block text-xs font-bold text-gray-500">สถานะ</label>
-                            <select id="swal-status" class="w-full p-2 border rounded">
-                                <option value="Not Started">ยังไม่เริ่ม</option>
-                                <option value="In Progress">กำลังทำ</option>
-                            </select>
-                        </div>
-                        <div>
-                             <label class="block text-xs font-bold text-gray-500">บันทึกช่วยจำ (ข้อดี/ข้อเสีย/การเดินทาง)</label>
-                             <textarea id="swal-remark" class="w-full p-2 border rounded text-sm" rows="2" placeholder="เช่น หอพักแพงแต่ใกล้รถไฟฟ้า..."></textarea>
-                        </div>
-                    </div>`,
-                showCancelButton: true, confirmButtonText: 'เพิ่ม', confirmButtonColor: '#2563EB', cancelButtonText: 'ยกเลิก', focusConfirm: false,
-                preConfirm: () => ({
-                    name: document.getElementById('swal-name').value,
-                    faculty: document.getElementById('swal-faculty').value,
-                    targetDate: document.getElementById('swal-target').value,
-                    officialDate: document.getElementById('swal-official').value,
-                    status: document.getElementById('swal-status').value,
-                    appFee: document.getElementById('swal-appFee').value,
-                    tuitionFee: document.getElementById('swal-tuitionFee').value,
-                    remark: document.getElementById('swal-remark').value
-                })
+                title: `<span class="text-2xl font-bold text-gray-700">✨ เพิ่มมหาลัยใหม่</span>`,
+                html: generateModalHtml({}), // Pass empty object for defaults
+                width: '600px',
+                showCancelButton: true,
+                confirmButtonText: '<i class="fas fa-plus mr-1"></i> เพิ่มทันที',
+                confirmButtonColor: '#10B981',
+                cancelButtonText: 'ยกเลิก',
+                focusConfirm: false,
+                customClass: {
+                    popup: 'rounded-2xl',
+                    container: 'font-sarabun'
+                },
+                preConfirm: () => getModalValues()
             });
             if (formValues) { universities.push({ id: Date.now(), ...formValues }); saveToLocal(); }
+        }
+
+        function generateModalHtml(data) {
+            // Helper to safe string
+            const val = (key) => data[key] || '';
+
+            return `
+            <div class="text-left space-y-5 px-1 py-2">
+                
+                <!-- Section 1: Identity -->
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1"><i class="fas fa-university text-blue-500 mr-2"></i>ชื่อมหาวิทยาลัย</label>
+                        <input id="swal-name" class="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white transition outline-none shadow-sm" placeholder="เช่น จุฬาลงกรณ์มหาวิทยาลัย" value="${val('name')}">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1"><i class="fas fa-graduation-cap text-purple-500 mr-2"></i>คณะ/สาขา</label>
+                        <input id="swal-faculty" class="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:bg-white transition outline-none shadow-sm" placeholder="เช่น วิศวกรรมคอมพิวเตอร์" value="${val('faculty')}">
+                    </div>
+                </div>
+
+                <!-- Section 2: Timeline -->
+                <div class="bg-blue-50/50 p-4 rounded-xl border border-blue-100 relative overflow-hidden">
+                    <div class="absolute top-0 right-0 p-2 opacity-10"><i class="fas fa-calendar-alt text-4xl text-blue-500"></i></div>
+                    <label class="block text-xs font-bold text-blue-800 mb-3 uppercase tracking-wide border-b border-blue-100 pb-1">📅 กำหนดการ (Timeline)</label>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-[11px] text-gray-500 block mb-1 font-semibold">เป้าหมายส่วนตัว</label>
+                            <input type="date" id="swal-target" class="w-full p-2 border border-gray-200 rounded-lg text-sm focus:border-blue-500 outline-none shadow-sm bg-white" value="${val('targetDate')}">
+                        </div>
+                        <div>
+                            <label class="text-[11px] text-red-500 block mb-1 font-bold">Official Deadline</label>
+                            <input type="date" id="swal-official" class="w-full p-2 border border-red-200 rounded-lg text-sm focus:border-red-500 outline-none shadow-sm bg-white" value="${val('officialDate')}">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 3: Financials -->
+                <div class="bg-green-50/50 p-4 rounded-xl border border-green-100 relative overflow-hidden">
+                    <div class="absolute top-0 right-0 p-2 opacity-10"><i class="fas fa-coins text-4xl text-green-500"></i></div>
+                    <label class="block text-xs font-bold text-green-800 mb-3 uppercase tracking-wide border-b border-green-100 pb-1">💰 ค่าใช้จ่าย (บาท)</label>
+                    
+                    <div class="grid grid-cols-2 gap-3 mb-3">
+                         <div>
+                            <label class="block text-[10px] text-gray-500 mb-1">ค่าสมัครสอบ (ครั้งเดียว)</label>
+                            <div class="relative">
+                                <span class="absolute left-3 top-2 text-gray-400 text-xs">฿</span>
+                                <input type="number" id="swal-appFee" class="w-full pl-6 p-2 border border-gray-200 rounded text-sm focus:border-green-500 outline-none bg-white" value="${val('appFee')}" placeholder="0">
+                            </div>
+                         </div>
+                         <div>
+                            <label class="block text-[10px] text-gray-500 mb-1">ค่าเทอม (ต่อเทอม)</label>
+                            <div class="relative">
+                                <span class="absolute left-3 top-2 text-gray-400 text-xs">฿</span>
+                                <input type="number" id="swal-tuitionFee" class="w-full pl-6 p-2 border border-gray-200 rounded text-sm focus:border-green-500 outline-none bg-white" value="${val('tuitionFee')}" placeholder="0">
+                            </div>
+                         </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                         <div>
+                            <label class="block text-[10px] text-gray-500 mb-1">ค่าหอพัก (ต่อเดือน)</label>
+                            <div class="relative">
+                                <span class="absolute left-3 top-2 text-gray-400 text-xs">฿</span>
+                                <input type="number" id="swal-dormFee" class="w-full pl-6 p-2 border border-gray-200 rounded text-sm focus:border-green-500 outline-none bg-white" value="${val('dormFee')}" placeholder="0">
+                            </div>
+                         </div>
+                         <div>
+                            <label class="block text-[10px] text-gray-500 mb-1">ค่ากินอยู่ (ต่อเดือน)</label>
+                            <div class="relative">
+                                <span class="absolute left-3 top-2 text-gray-400 text-xs">฿</span>
+                                <input type="number" id="swal-livingCost" class="w-full pl-6 p-2 border border-gray-200 rounded text-sm focus:border-green-500 outline-none bg-white" value="${val('livingCost')}" placeholder="0">
+                            </div>
+                         </div>
+                    </div>
+                </div>
+
+                <!-- Section 4: Status & Remark -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div class="md:col-span-1">
+                        <label class="block text-xs font-bold text-gray-700 mb-1">สถานะ</label>
+                        <select id="swal-status" class="w-full p-2.5 border border-gray-300 rounded-lg text-sm bg-white outline-none focus:ring-2 focus:ring-gray-200">
+                            <option value="Not Started" ${val('status') === 'Not Started' ? 'selected' : ''}>⚪ ยังไม่เริ่ม</option>
+                            <option value="In Progress" ${val('status') === 'In Progress' ? 'selected' : ''}>🟡 กำลังทำ</option>
+                            <option value="Done" ${val('status') === 'Done' ? 'selected' : ''}>🟢 เสร็จแล้ว</option>
+                        </select>
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-xs font-bold text-gray-700 mb-1">Memo (ข้อดี/ข้อเสีย)</label>
+                        <textarea id="swal-remark" rows="3" class="w-full p-2.5 border border-gray-300 rounded-lg text-sm bg-white outline-none focus:ring-2 focus:ring-gray-200 transition resize-y" placeholder="เช่น เดินทางสะดวก แต่ค่าหอแพง...">${val('remark')}</textarea>
+                    </div>
+                </div>
+            </div>`;
+        }
+
+        function getModalValues() {
+            return {
+                name: document.getElementById('swal-name').value,
+                faculty: document.getElementById('swal-faculty').value,
+                targetDate: document.getElementById('swal-target').value,
+                officialDate: document.getElementById('swal-official').value,
+                status: document.getElementById('swal-status').value,
+                appFee: document.getElementById('swal-appFee').value,
+                tuitionFee: document.getElementById('swal-tuitionFee').value,
+                dormFee: document.getElementById('swal-dormFee').value,
+                livingCost: document.getElementById('swal-livingCost').value,
+                remark: document.getElementById('swal-remark').value
+            };
         }
 
         // --- AI LOGIC (Enhanced Prompts) ---
@@ -709,6 +787,167 @@
             const result = await callGemini(prompt);
             showResult(marked.parse(result));
             clearLoading(btn);
+        }
+
+        async function quickSetApiKey() {
+            Swal.close();
+            const { value: key } = await Swal.fire({
+                title: 'ใส่ Gemini API Key',
+                input: 'text',
+                inputAttributes: {
+                    autocapitalize: 'off'
+                },
+                inputPlaceholder: 'Paste your API Key here...',
+                showCancelButton: true,
+                confirmButtonText: 'บันทึก',
+                confirmButtonColor: '#7c3aed',
+                cancelButtonText: 'ยกเลิก'
+            });
+
+            if (key) {
+                localStorage.setItem('gemini_api_key', key.trim());
+                geminiApiKey = key.trim();
+                document.getElementById('apiKeyInput').value = geminiApiKey; // Sync with settings
+                Swal.fire({
+                    icon: 'success',
+                    title: 'บันทึก API Key เรียบร้อย',
+                    text: 'พร้อมใช้งาน AI Assistant แล้ว!',
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+            }
+        }
+
+        function showWelcomeModal() {
+            if (sessionStorage.getItem('intro_seen')) return;
+
+            Swal.fire({
+                title: '🐻 ยินดีต้อนรับครับ!',
+                html: `
+                    <div class="text-left text-sm space-y-4">
+                        <div class="bg-blue-50 p-3 rounded border border-blue-100 text-blue-800">
+                             <i class="fas fa-info-circle mr-1"></i> เริ่มต้นใช้งาน:
+                        </div>
+                        
+                        <div class="grid grid-cols-1 gap-3">
+                            <button onclick="document.getElementById('importFile').click(); Swal.close();" 
+                                class="text-left w-full bg-white hover:bg-orange-50 text-gray-700 hover:text-orange-700 p-3 rounded border border-gray-200 hover:border-orange-200 transition flex items-center shadow-sm group">
+                                <span class="bg-orange-100 text-orange-600 p-2.5 rounded-full mr-3 group-hover:scale-110 transition"><i class="fas fa-file-import"></i></span>
+                                <div>
+                                    <div class="font-bold">เรียกข้อมูลเก่า (Restore)</div>
+                                    <div class="text-xs text-gray-500 group-hover:text-orange-600">กดเพื่อ Restoe ไฟล์ Backup กลับมา</div>
+                                </div>
+                            </button>
+                            
+                            <button onclick="quickSetApiKey()" 
+                                class="text-left w-full bg-white hover:bg-purple-50 text-gray-700 hover:text-purple-700 p-3 rounded border border-gray-200 hover:border-purple-200 transition flex items-center shadow-sm group">
+                                <span class="bg-purple-100 text-purple-600 p-2.5 rounded-full mr-3 group-hover:scale-110 transition"><i class="fas fa-key"></i></span>
+                                <div>
+                                    <div class="font-bold">ใส่ API Key (AI)</div>
+                                    <div class="text-xs text-gray-500 group-hover:text-purple-600">เพื่อเริ่มใช้งานฟังก์ชัน AI ทันที</div>
+                                </div>
+                            </button>
+                        </div>
+                        
+                        <div class="mt-4 pt-3 border-t text-xs text-center text-gray-400">
+                            <p class="mb-2"><i class="fas fa-exclamation-triangle"></i> คำเตือน: เว็บนี้ไม่เก็บข้อมูลบน Cloud</p>
+                            <p><b>อย่าลืม Backup ข้อมูล</b> ก่อนปิดเว็บทุกครั้งนะครับ</p>
+                        </div>
+
+                        <div class="mt-2 text-center">
+                             <button onclick="Swal.close()" class="text-gray-400 text-xs hover:text-gray-600 font-semibold underline">
+                                ✕ ปิดหน้าต่างนี้ (ใช้งานต่อ)
+                             </button>
+                        </div>
+                    </div>
+                `,
+                showConfirmButton: false,
+                allowOutsideClick: false,
+                padding: '2rem',
+                width: '420px',
+                background: '#fff',
+                backdrop: `
+                    rgba(0,0,123,0.4)
+                    left top
+                    no-repeat
+                `
+            }).then(() => {
+                sessionStorage.setItem('intro_seen', 'true');
+            });
+        }
+
+        // --- EXIT WARNING ---
+        window.addEventListener('beforeunload', function (e) {
+            e.preventDefault();
+            e.returnValue = ''; // Trigger browser warning
+        });
+
+        // --- BUDGET PLANNER ---
+        function openBudgetPlanner() {
+            if (universities.length === 0) return Swal.fire('ยังไม่มีข้อมูล', 'กรุณาเพิ่มมหาวิทยาลัยก่อนใช้งาน Budget Planner', 'info');
+
+            let htmlContent = `<div class="space-y-4">`;
+
+            universities.forEach((uni, index) => {
+                const tuition = parseInt(uni.tuitionFee || 0);
+                const dorm = parseInt(uni.dormFee || 0);
+                const living = parseInt(uni.livingCost || 0);
+                const app = parseInt(uni.appFee || 0);
+
+                // Calculation: 1 Year (2 Terms, 12 Months)
+                const yearlyTuition = tuition * 2;
+                const yearlyFixed = (dorm + living) * 12;
+                const firstYearTotal = yearlyTuition + yearlyFixed + app;
+
+                htmlContent += `
+                <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                    <div class="flex justify-between items-start mb-2">
+                         <h3 class="font-bold text-blue-900 text-left truncate w-3/4"><span class="text-gray-400 mr-1">#${index + 1}</span> ${uni.name}</h3>
+                         <span class="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full font-bold whitespace-nowrap">ปีละ ≈ ${firstYearTotal.toLocaleString()} บ.</span>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs text-left">
+                        <div class="bg-white p-2 rounded border">
+                            <div class="text-gray-500">ค่าสมัคร</div>
+                            <div class="font-bold text-gray-800">${app > 0 ? app.toLocaleString() : '-'}</div>
+                        </div>
+                        <div class="bg-white p-2 rounded border">
+                            <div class="text-gray-500 text-[10px]">ค่าเทอม (X2)</div>
+                            <div class="font-bold text-gray-800">${tuition > 0 ? tuition.toLocaleString() : '-'}</div>
+                        </div>
+                        <div class="bg-white p-2 rounded border">
+                            <div class="text-gray-500 text-[10px]">หอพัก (X12)</div>
+                            <div class="font-bold text-gray-800">${dorm > 0 ? dorm.toLocaleString() : '-'}</div>
+                        </div>
+                        <div class="bg-white p-2 rounded border">
+                            <div class="text-gray-500 text-[10px]">กินอยู่ (X12)</div>
+                            <div class="font-bold text-gray-800">${living > 0 ? living.toLocaleString() : '-'}</div>
+                        </div>
+                    </div>
+
+                    ${(tuition + dorm + living) === 0 ? '<p class="text-[10px] text-red-400 mt-2 text-left">*ยังไม่ได้ระบุข้อมูลการเงิน (กดแก้ไขที่หน้ารายการ)</p>' : ''}
+                </div>`;
+            });
+
+            htmlContent += `
+                <div class="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded text-xs text-left text-yellow-800">
+                    <i class="fas fa-lightbulb mr-1"></i> <b>วิธีคำนวณ (ประมาณการ 1 ปีการศึกษา):</b><br>
+                    (ค่าเทอม x 2) + (ค่าหอพัก x 12) + (ค่ากินอยู่ x 12) + ค่าสมัคร
+                </div>
+            </div>`;
+
+            Swal.fire({
+                title: '<span class="text-xl">💰 สรุปงบประมาณที่ต้องเตรียม</span>',
+                html: htmlContent,
+                width: '600px',
+                showCloseButton: true,
+                focusConfirm: false,
+                confirmButtonText: 'รับทราบ (OK)',
+                confirmButtonColor: '#10B981',
+                customClass: {
+                    container: 'font-sarabun'
+                }
+            });
         }
 
         init();
